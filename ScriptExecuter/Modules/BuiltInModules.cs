@@ -235,8 +235,7 @@ namespace ScriptExecuter
                     onCancel = () => args[2].AsFunctionInstance().Call();
                 }
 
-                MessageBox.Show(title, message, onConfirm, onCancel);
-                return JsValue.Undefined;
+                return JsValue.FromObject(engine,new MessageBox());
             }));
         }
     }

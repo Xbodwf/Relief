@@ -82,6 +82,7 @@ namespace ScriptExecuter
 
             // Add hooks to UMM event methods
             modEntry.OnToggle = OnToggle;
+            modEntry.OnGUI = Options.OnGUI;
         }
 
         /// <summary>

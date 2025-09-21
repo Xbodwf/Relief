@@ -45,6 +45,16 @@
       <HintPath>C:\Program Files (x86)\Steam\steamapps\common\A Dance of Fire and Ice\A Dance of Fire and Ice_Data\Managed\Assembly-CSharp-firstpass.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="DOTween, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\Program Files (x86)\Steam\steamapps\common\A Dance of Fire and Ice\A Dance of Fire and Ice_Data\Managed\DOTween.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="DOTweenPro, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\Program Files (x86)\Steam\steamapps\common\A Dance of Fire and Ice\A Dance of Fire and Ice_Data\Managed\DOTweenPro.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="JSNet">
       <HintPath>..\..\..\Projects\.Projects\Overlayer.Scripting\JSNet.dll</HintPath>
     </Reference>
@@ -211,16 +221,17 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BuiltInModules.cs" />
+    <Compile Include="Modules\BuiltInModules.cs" />
     <Compile Include="Components.cs" />
     <Compile Include="EventSystem.cs" />
-    <Compile Include="HostMethods.cs" />
-    <Compile Include="JsConsole.cs" />
-    <Compile Include="MessageBox.cs" />
-    <Compile Include="ReactUnity.cs" />
-    <Compile Include="ReactUnityHost.cs" />
-    <Compile Include="TypescriptModuleLoader.cs" />
-    <Compile Include="UnityBridge.cs" />
+    <Compile Include="Modules\HostMethods.cs" />
+    <Compile Include="Console\JsConsole.cs" />
+    <Compile Include="UI\MessageBox.cs" />
+    <Compile Include="UI\Options.cs" />
+    <Compile Include="Modules\ReactUnity.cs" />
+    <Compile Include="Modules\ReactUnityHost.cs" />
+    <Compile Include="Loaders\TypescriptModuleLoader.cs" />
+    <Compile Include="Modules\UnityBridge.cs" />
     <None Include="MainClass.cs.bak" />
     <Compile Include="MainClass.cs" />
     <Compile Include="Patches.cs" />
