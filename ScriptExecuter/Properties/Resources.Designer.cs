@@ -71,9 +71,9 @@ namespace ScriptExecuter.Properties {
         ///KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
         ///WA [字符串的其余部分被截断]&quot;; 的本地化字符串。
         /// </summary>
-        internal static string typescript {
+        internal static string tsc {
             get {
-                return ResourceManager.GetString("typescript", resourceCulture);
+                return ResourceManager.GetString("tsc", resourceCulture);
             }
         }
     }

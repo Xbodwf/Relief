@@ -254,7 +254,10 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\typescript.js" />
+    <None Include="Resources\typescript" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\tsc.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

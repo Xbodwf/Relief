@@ -139,7 +139,7 @@ namespace ScriptExecuter
 
                 transformEngine.SetValue("console", jsConsole);
 
-                transformEngine.Execute(Properties.Resources.typescript);
+                transformEngine.Execute(Properties.Resources.tsc);
 
 
                 engine = new Engine(options =>
