@@ -1,0 +1,9 @@
+{
+  "Releases": [
+    {
+      "Id": "ScriptExecuter",
+      "Version": "0.38",
+      "DownloadUrl": "https://github.com/flutas-web/ScriptExecuter"
+    }
+  ]
+}
