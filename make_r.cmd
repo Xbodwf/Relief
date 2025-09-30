@@ -11,10 +11,10 @@ mkdir tmp
 cd tmp
 mkdir %dllpath%
 copy ..\Info.json %dllpath%
-//copy ..\ScriptExecuter\%modname%\bin\Debug\*.* %dllpath%
+//copy ..\Relief\%modname%\bin\Debug\*.* %dllpath%
 
-REM Copy ..\ScriptExecuter\%modname%\bin\Debug\ to %dllpath%
-set "sourceDir=..\ScriptExecuter\%modname%\bin\Debug"
+REM Copy ..\Relief\%modname%\bin\Debug\ to %dllpath%
+set "sourceDir=..\Relief\%modname%\bin\Debug"
 set "destDir=%dllpath%"
 
 if not exist "%sourceDir%" (

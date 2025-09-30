@@ -1,0 +1,627 @@
+﻿using System;
+using System.Reflection;
+using HarmonyLib;
+using UnityEngine;
+using UnityModManagerNet;
+using System.Runtime;
+using System.IO;
+using Jint;
+using Jint.Native;
+using System.Xml.Linq;
+using System.Text.Json;
+using Jint.Native.Object;
+using Jint.Native.Function;
+using Jint.Runtime;
+using Jint.Runtime.Modules;
+using static UnityModManagerNet.UnityModManager;
+using Jint.Native.Array;
+using System.Linq;
+using System.Collections;
+using UnityEngine.EventSystems;
+
+// TODO: Rename this namespace to your mod's name.
+namespace ScriptExecuter
+{
+    /// <summary>
+    /// The main class for the mod. Call other parts of your code from this
+    /// class.
+    /// </summary>
+    public static class MainClass
+    {
+        /// <summary>
+        /// Whether the mod is enabled. This is useful to have as a global
+        /// property in case other parts of your mod's code needs to see if the
+        /// mod is enabled.
+        /// </summary>
+        public static bool IsEnabled { get; private set; }
+        public static Engine engine { get; private set; }
+
+        public static Engine transformEngine { get; private set; }
+
+        public static string AssemblyDirectory
+        {
+            get
+            {
+                string codeBase = Assembly.GetExecutingAssembly().CodeBase;
+                UriBuilder uri = new UriBuilder(codeBase);
+                string path = Uri.UnescapeDataString(uri.Path);
+                return Path.GetDirectoryName(path);
+            }
+        }
+        public static string ScriptDir
+        {
+            get
+            {
+                return Path.Combine(AssemblyDirectory, "Scripts");
+            }
+        }
+
+        /// <summary>
+        /// UMM's logger instance. Use this to write logs to the UMM settings
+        /// window under the "Logs" tab.
+        /// </summary>
+        public static UnityModManager.ModEntry.ModLogger Logger { get; private set; }
+
+        private static Harmony harmony;
+
+        /// <summary>
+        /// Perform any initial setup with the mod here.
+        /// </summary>
+        /// <param name="modEntry">UMM's mod entry for the mod.</param>
+        internal static void Setup(UnityModManager.ModEntry modEntry) {
+            Logger = modEntry.Logger;
+
+            // Add hooks to UMM event methods
+            modEntry.OnToggle = OnToggle;
+        }
+
+        /// <summary>
+        /// Handler for toggling the mod on/off.
+        /// </summary>
+        /// <param name="modEntry">UMM's mod entry for the mod.</param>
+        /// <param name="value">
+        /// <c>true</c> if the mod is being toggled on, <c>false</c> if the mod
+        /// is being toggled off.
+        /// </param>
+        /// <returns><c>true</c></returns>
+        private static bool OnToggle(UnityModManager.ModEntry modEntry, bool value) {
+            IsEnabled = value;
+            if (value) {
+                StartMod(modEntry);
+            } else {
+                StopMod(modEntry);
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Start the mod up. You can create Unity GameObjects, patch methods,
+        /// etc.
+        /// </summary>
+        /// <param name="modEntry">UMM's mod entry for the mod.</param>
+        private static void StartMod(UnityModManager.ModEntry modEntry) {
+            // Patch everything in this assembly
+            harmony = new Harmony(modEntry.Info.Id);
+            harmony.PatchAll(Assembly.GetExecutingAssembly());
+            Assembly.LoadFile(Path.Combine(AssemblyDirectory,"./JSNet.dll"));
+            try
+            {
+                if (!Directory.Exists(ScriptDir))
+                {
+                    Directory.CreateDirectory(ScriptDir);
+                }
+                engine = new Engine(options =>
+                {
+                    options.EnableModules(ScriptDir);
+                    options.ExperimentalFeatures = ExperimentalFeature.All;
+                    options.AllowClr();
+                });
+                transformEngine = new Engine(options =>
+                {
+                    options.EnableModules(ScriptDir);
+                    options.ExperimentalFeatures = ExperimentalFeature.All;
+                    options.AllowClr();
+                });
+                var eventSystem = new EventSystem();
+                AddBuiltInModules(engine,eventSystem);
+
+                var jsConsole = new JsConsole(Logger);
+                engine.SetValue("console",jsConsole);
+
+                //Add Babel Support
+                transformEngine.SetValue("console", jsConsole);
+                transformEngine.Execute(Properties.Resources.babel_min);
+                ScanMods(engine);
+            }
+            catch(Exception ex)
+            {
+                Logger.LogException(ex);
+            }
+
+
+
+        }
+
+        /// <summary>
+        /// Stop the mod by cleaning up anything that you created in
+        /// <see cref="StartMod(UnityModManager.ModEntry)"/>.
+        /// </summary>
+        /// <param name="modEntry">UMM's mod entry for the mod.</param>
+        private static void StopMod(UnityModManager.ModEntry modEntry) {
+            // Unpatch everything
+            harmony.UnpatchAll(modEntry.Info.Id);
+            engine = null;
+        }
+
+        private static void ScanMods(Engine engine)
+        {
+            if (engine == null) { return; }
+
+
+            foreach (var directory in Directory.GetDirectories(ScriptDir))
+            {
+                string projectJsonPath = Path.Combine(directory, "project.json");
+                if (!File.Exists(projectJsonPath)) continue;
+
+                string projectJsonContent = File.ReadAllText(projectJsonPath);
+                var projectInfo = JsonSerializer.Deserialize<ProjectInfo>(projectJsonContent);
+
+                if (string.IsNullOrEmpty(projectInfo.EntryPoint) || string.IsNullOrEmpty(projectInfo.Export))
+                    continue;
+
+                string entryPointFilePath = Path.Combine(directory, projectInfo.EntryPoint);
+
+                if (!File.Exists(entryPointFilePath)) continue;
+
+                // 构建模块路径
+                string modulePath = Path.Combine(ScriptDir, $"{Path.GetFileName(directory)}/{projectInfo.EntryPoint}");
+
+                Logger.Log($"Load Module <color=#debb7b>{projectInfo.Name}</color>");
+                try
+                {
+                    var exports = engine.Modules.Import(modulePath);
+
+                    // 获取导出的函数
+                    var exportFunction = exports.Get(projectInfo.Export).AsFunctionInstance();
+
+                    // 调用导出函数
+                    exportFunction.Call(engine.Global, new JsValue[] { projectInfo.Id, projectInfo.Name });
+                    Logger.Log($"Module <color=#debb7b>{projectInfo.Name}</color> Loaded.");
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogException(ex);
+                    Logger.Log($"Module <color=#debb7b>{projectInfo.Name}</color> Not Loaded.");
+                }
+                
+                
+            }
+        }
+
+        public class ProjectInfo
+        {
+            public string Name { get; set; }
+            public string Id { get; set; }
+            public object[] Authors { get; set; }
+            public string EntryPoint { get; set; }
+            public string Export { get; set; }
+        }
+
+        private static void AddBuiltInModules(Jint.Engine engine, EventSystem eventSystem)
+        {
+            // 注册主机方法
+            var hostMethods = new HostMethods(ScriptDir);
+
+            string fsModuleCode = @"
+        export function readFileSync(filePath, encodingOrOptions) {
+            let encoding = 'utf-8';
+            if (typeof encodingOrOptions === 'object') {
+                encoding = encodingOrOptions.encoding || 'utf-8';
+            } else if (typeof encodingOrOptions === 'string') {
+                encoding = encodingOrOptions;
+            }
+            return host.readFileSync(filePath, encoding);
+        }
+
+        export function readFile(filePath, encodingOrCallback, callback) {
+            let encoding = 'utf-8';
+            let cb = callback;
+
+            if (typeof encodingOrCallback === 'function') {
+                cb = encodingOrCallback;
+            } else if (typeof encodingOrCallback === 'string') {
+                encoding = encodingOrCallback;
+            }
+
+            host.readFile(filePath, encoding, (err, data) => {
+                if (err) {
+                    cb(new Error(err));
+                } else {
+                    cb(null, data);
+                }
+            });
+        }
+
+        export function writeFileSync(filePath, data, encodingOrOptions) {
+            let encoding = 'utf-8';
+            if (typeof encodingOrOptions === 'object') {
+                encoding = encodingOrOptions.encoding || 'utf-8';
+            } else if (typeof encodingOrOptions === 'string') {
+                encoding = encodingOrOptions;
+            }
+            return host.writeFileSync(filePath, data, encoding);
+        }
+
+        export function writeFile(filePath, data, encodingOrCallback, callback) {
+            let encoding = 'utf-8';
+            let cb = callback;
+
+            if (typeof encodingOrCallback === 'function') {
+                cb = encodingOrCallback;
+            } else if (typeof encodingOrCallback === 'string') {
+                encoding = encodingOrCallback;
+            }
+
+            host.writeFile(filePath, data, encoding, (err) => {
+                if (err) {
+                    cb(new Error(err));
+                } else {
+                    cb(null);
+                }
+            });
+        }
+
+        export function existsSync(filePath) {
+            return host.existsSync(filePath);
+        }
+
+        export function mkdirSync(dirPath) {
+            return host.mkdirSync(dirPath);
+        }
+
+        export function readdirSync(dirPath) {
+            return host.readdirSync(dirPath);
+        }
+
+        export function unlinkSync(filePath) {
+            return host.unlinkSync(filePath);
+        }
+
+        export function rmdirSync(dirPath) {
+            return host.rmdirSync(dirPath);
+        }
+    ";
+            engine.Modules.Add("fs", fsModuleCode);
+
+            // 示例内置模块: path 模块
+            string pathModuleCode = @"
+        export function join(...paths) {
+            return host.pathJoin(paths);
+        }
+
+        export function resolve(...paths) {
+            return host.pathResolve(paths);
+        }
+
+        export function basename(path) {
+            return host.pathBasename(path);
+        }
+
+        export function dirname(path) {
+            return host.pathDirname(path);
+        }
+
+        export function extname(path) {
+            return host.pathExtname(path);
+        }
+
+        export function isAbsolute(path) {
+            return host.pathIsAbsolute(path);
+        }
+    ";
+            engine.Modules.Add("path", pathModuleCode);
+
+            string processModuleCode = @"
+            export {
+                    cwd: () => host.processCwd(),
+                    env: host.processEnv,
+                    platform: host.processPlatform,
+                    version: host.processVersion,
+                 arch: host.processArch,
+                    pid: host.processPid,
+                    uptime: host.processUptime
+                };
+    ";
+            engine.Modules.Add("process", processModuleCode);
+
+            string eventHandlerModuleCode = @"
+        const events = {};
+
+        export function on(eventName, callback) {
+            const guid = generateGuid();
+            host.registerEvent(eventName, callback, guid);
+            return guid;
+        }
+
+        export function off(guid) {
+            host.unregisterEvent(guid);
+        }
+
+        export function handle(eventName, handlerLogic) {
+            const result = handlerLogic();
+            host.triggerEvent(eventName, result);
+            return result;
+        }
+    ";
+            engine.Modules.Add("eventHandler", eventHandlerModuleCode);
+
+            // 将 host 方法传递给 fs 模块
+            engine.SetValue("host", hostMethods);
+
+            engine.SetValue("registerEvent", new Func<string, Delegate, string>((eventName, callback) =>
+            {
+                var guid = eventSystem.RegisterEvent(eventName, callback);
+                return guid;
+            }));
+
+            engine.SetValue("unregisterEvent", new Action<string>(guid =>
+            {
+                eventSystem.UnregisterEvent(guid);
+            }));
+
+            engine.SetValue("triggerEvent", new Action<string, object[]>((eventName, args) =>
+            {
+                eventSystem.TriggerEvent(eventName, args);
+            }));
+        }
+
+        public class HostMethods
+        {
+            private readonly string _scriptDir;
+
+            public HostMethods(string scriptDir)
+            {
+                _scriptDir = scriptDir;
+            }
+
+            public string readFileSync(string filePath, string encoding = "utf8")
+            {
+                try
+                {
+                    return File.ReadAllText(Path.Combine(_scriptDir, filePath), encoding.ToLower() == "utf8" ? System.Text.Encoding.UTF8 : System.Text.Encoding.GetEncoding(encoding));
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error reading file {filePath}: {ex.Message}");
+                    throw ex;
+                }
+            }
+
+            public void readFile(string filePath, string encoding, Action<string, string> callback)
+            {
+                try
+                {
+                    string content = File.ReadAllText(Path.Combine(_scriptDir, filePath), encoding.ToLower() == "utf8" ? System.Text.Encoding.UTF8 : System.Text.Encoding.GetEncoding(encoding));
+                    callback(null, content);
+                }
+                catch (Exception ex)
+                {
+                    callback(ex.Message, null);
+                }
+            }
+
+            public void readFile(string filePath, Action<string, string> callback)
+            {
+                readFile(filePath, "utf8", callback);
+            }
+
+            public bool writeFileSync(string filePath, string data, string encoding = "utf8")
+            {
+                try
+                {
+                    File.WriteAllText(Path.Combine(_scriptDir, filePath), data, encoding.ToLower() == "utf8" ? System.Text.Encoding.UTF8 : System.Text.Encoding.GetEncoding(encoding));
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error writing file {filePath}: {ex.Message}");
+                    throw ex;
+                }
+            }
+
+            public void writeFile(string filePath, string data, string encoding, Action<string> callback)
+            {
+                try
+                {
+                    File.WriteAllText(Path.Combine(_scriptDir, filePath), data, encoding.ToLower() == "utf8" ? System.Text.Encoding.UTF8 : System.Text.Encoding.GetEncoding(encoding));
+                    callback(null);
+                }
+                catch (Exception ex)
+                {
+                    callback(ex.Message);
+                }
+            }
+
+            public void writeFile(string filePath, string data, Action<string> callback)
+            {
+                writeFile(filePath, data, "utf8", callback);
+            }
+
+            public bool existsSync(string filePath)
+            {
+                return File.Exists(Path.Combine(_scriptDir, filePath)) || Directory.Exists(Path.Combine(_scriptDir, filePath));
+            }
+
+            public bool mkdirSync(string dirPath)
+            {
+                try
+                {
+                    Directory.CreateDirectory(Path.Combine(_scriptDir, dirPath));
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error creating directory {dirPath}: {ex.Message}");
+                    return false;
+                }
+            }
+
+            public JsValue readdirSync(string dirPath)
+            {
+                try
+                {
+                    var entries = Directory.GetFileSystemEntries(Path.Combine(_scriptDir, dirPath));
+                    return JsValue.FromObject(engine,entries.Select(e => e.ToString()).ToArray());
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error reading directory {dirPath}: {ex.Message}");
+                    return JsValue.Undefined;
+                }
+            }
+
+            public bool unlinkSync(string filePath)
+            {
+                try
+                {
+                    File.Delete(Path.Combine(_scriptDir, filePath));
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error deleting file {filePath}: {ex.Message}");
+                    return false;
+                }
+            }
+
+            public bool rmdirSync(string dirPath)
+            {
+                try
+                {
+                    Directory.Delete(Path.Combine(_scriptDir, dirPath), true);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error deleting directory {dirPath}: {ex.Message}");
+                    return false;
+                }
+            }
+
+            public string pathJoin(params JsValue[] paths)
+            {
+                try
+                {
+                    return Path.Combine(paths.Select(p => p.AsString()).ToArray());
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error joining paths: {ex.Message}");
+                    return null;
+                }
+            }
+
+            public string pathResolve(params JsValue[] paths)
+            {
+                try
+                {
+                    return Path.GetFullPath(Path.Combine(paths.Select(p => p.AsString()).ToArray()));
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error resolving paths: {ex.Message}");
+                    return null;
+                }
+            }
+
+            public string pathBasename(string path)
+            {
+                try
+                {
+                    return Path.GetFileName(path);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error getting basename: {ex.Message}");
+                    return null;
+                }
+            }
+
+            public string pathDirname(string path)
+            {
+                try
+                {
+                    return Path.GetDirectoryName(path);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error getting dirname: {ex.Message}");
+                    return null;
+                }
+            }
+
+            public string pathExtname(string path)
+            {
+                try
+                {
+                    return Path.GetExtension(path);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error getting extname: {ex.Message}");
+                    return null;
+                }
+            }
+
+            public bool pathIsAbsolute(string path)
+            {
+                try
+                {
+                    return Path.IsPathRooted(path);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error checking if path is absolute: {ex.Message}");
+                    return false;
+                }
+            }
+
+            // Process methods
+            public string processCwd()
+            {
+                return Environment.CurrentDirectory;
+            }
+
+            public JsValue processEnv(Jint.Engine engine)
+            {
+                return JsValue.Null;
+            }
+
+            public string processPlatform()
+            {
+                return Environment.OSVersion.Platform.ToString();
+            }
+
+            public string processVersion()
+            {
+                return Environment.Version.ToString();
+            }
+
+            public string processArch()
+            {
+                return Environment.Is64BitProcess ? "x64" : "x86";
+            }
+
+            public int processPid()
+            {
+                return System.Diagnostics.Process.GetCurrentProcess().Id;
+            }
+
+            public double processUptime()
+            {
+                TimeSpan uptime = DateTime.Now - System.Diagnostics.Process.GetCurrentProcess().StartTime;
+                return uptime.TotalSeconds;
+            }
+        }
+    }
+}
