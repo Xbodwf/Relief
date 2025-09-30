@@ -17,7 +17,7 @@ It's safe, easy and fast.
 import * as fs from 'fs';
 import * as path from 'path';
 
-export function EndlessJourneyLoader(id:string, name:string) {
+export default function EndlessJourneyLoader(id:string, name:string) {
     console.log(`Welcome to ${name}[${id}] Loader`);
 
     const statsPath = path.join(`./${name}`, "stats.json");
@@ -65,7 +65,7 @@ function App() {
     </div>
   </>;
 }
-export function Loader(id:string, name:string) {
+export default function Loader(id:string, name:string) {
   createRoot(UnityBridge.querySelector('Trail')).render(<App />);
 }
 ```
