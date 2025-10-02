@@ -224,7 +224,8 @@ namespace Relief
                     var propName = jsProperties[i];
                     var descriptor = jsObject.GetOwnProperty(propName);
 
-                    if (descriptor != null)
+                    // 只显示可枚举属性
+                    if (descriptor != null && descriptor.Enumerable)
                     {
                         if (descriptor.IsDataDescriptor())
                         {

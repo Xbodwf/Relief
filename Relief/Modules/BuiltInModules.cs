@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Jint;
 using Jint.Native;
 using Jint.Runtime.Modules;
@@ -19,190 +20,107 @@ namespace Relief
         /// <param name="scriptDir">脚本目录路径</param>
         public static void RegisterAllModules(Engine engine, EventSystem eventSystem, string scriptDir)
         {
-            // 注册主机方法
-            var hostMethods = new HostMethods(scriptDir);
-            engine.SetValue("host", hostMethods);
+            var host = new HostMethods(scriptDir);
+            engine.SetValue("host", host);
 
             // fs
-            RegisterFileSystemModule(engine);
-            
+            engine.Modules.Add("fs", builder => {
+                builder.ExportFunction("readFileSync", args => {
+                    var path = args[0].AsString();
+                    var encoding = args.Length > 1 ? args[1].AsString() : "utf8";
+                    return JsValue.FromObject(engine, host.readFileSync(path, encoding));
+                });
+                builder.ExportFunction("writeFileSync", args => {
+                    var path = args[0].AsString();
+                    var content = args[1].AsString();
+                    var encoding = args.Length > 2 ? args[2].AsString() : "utf8";
+                    return JsValue.FromObject(engine, host.writeFileSync(path, content, encoding));
+                });
+                builder.ExportFunction("existsSync", args => {
+                    var path = args[0].AsString();
+                    return JsValue.FromObject(engine, host.existsSync(path));
+                });
+                builder.ExportFunction("mkdirSync", args => {
+                    var path = args[0].AsString();
+                    return JsValue.FromObject(engine, host.mkdirSync(path));
+                });
+                builder.ExportFunction("readdirSync", args => {
+                    var path = args[0].AsString();
+                    return JsValue.FromObject(engine, host.readdirSync(path));
+                });
+                builder.ExportFunction("unlinkSync", args => {
+                    var path = args[0].AsString();
+                    return JsValue.FromObject(engine, host.unlinkSync(path));
+                });
+                builder.ExportFunction("rmdirSync", args => {
+                    var path = args[0].AsString();
+                    return JsValue.FromObject(engine, host.rmdirSync(path));
+                });
+            });
+
             // path
-            RegisterPathModule(engine);
-            
+            engine.Modules.Add("path", builder => {
+                builder.ExportFunction("join", args => {
+                    return JsValue.FromObject(engine, host.pathJoin(args));
+                });
+                builder.ExportFunction("resolve", args => {
+                    return JsValue.FromObject(engine, host.pathResolve(args));
+                });
+                builder.ExportFunction("basename", args => {
+                    var path = args[0].AsString();
+                    return JsValue.FromObject(engine, host.pathBasename(path));
+                });
+                builder.ExportFunction("dirname", args => {
+                    var path = args[0].AsString();
+                    return JsValue.FromObject(engine, host.pathDirname(path));
+                });
+                builder.ExportFunction("extname", args => {
+                    var path = args[0].AsString();
+                    return JsValue.FromObject(engine, host.pathExtname(path));
+                });
+                builder.ExportFunction("isAbsolute", args => {
+                    var path = args[0].AsString();
+                    return JsValue.FromObject(engine, host.pathIsAbsolute(path));
+                });
+            });
+
             // process
-            RegisterProcessModule(engine);
-            
+            engine.Modules.Add("process", builder => {
+                builder.ExportFunction("cwd", args => JsValue.FromObject(engine, host.processCwd()));
+                builder.ExportFunction("uptime", args => JsValue.FromObject(engine, host.processUptime()));
+            });
+
             // event handler
-            RegisterEventModule(engine, eventSystem);
-
-            // UI Module
-            RegisterUiModule(engine);
-        }
-
-        /// <summary>
-        /// Fs
-        /// </summary>
-        private static void RegisterFileSystemModule(Engine engine)
-        {
-            string fsModuleCode = @"
-        export function readFileSync(filePath, encodingOrOptions) {
-            let encoding = 'utf-8';
-            if (typeof encodingOrOptions === 'object') {
-                encoding = encodingOrOptions.encoding || 'utf-8';
-            } else if (typeof encodingOrOptions === 'string') {
-                encoding = encodingOrOptions;
-            }
-            return host.readFileSync(filePath, encoding);
-        }
-
-        export function readFile(filePath, encodingOrCallback, callback) {
-            let encoding = 'utf-8';
-            let cb = callback;
-
-            if (typeof encodingOrCallback === 'function') {
-                cb = encodingOrCallback;
-            } else if (typeof encodingOrCallback === 'string') {
-                encoding = encodingOrCallback;
-            }
-
-            host.readFile(filePath, encoding, (err, data) => {
-                if (err) {
-                    cb(new Error(err));
-                } else {
-                    cb(null, data);
-                }
+            engine.Modules.Add("eventHandler", builder => {
+                builder.ExportFunction("registerEvent", args => {
+                    var name = args[0].AsString();
+                    var del = args[1].ToObject();
+                    return JsValue.FromObject(engine, eventSystem.RegisterEvent(name, del as Delegate));
+                });
+                builder.ExportFunction("unregisterEvent", args => {
+                    var name = args[0].AsString();
+                    eventSystem.UnregisterEvent(name);
+                    return JsValue.Undefined;
+                });
+                builder.ExportFunction("triggerEvent", args => {
+                    var name = args[0].AsString();
+                    var eventArgs = args.Skip(1).Select(a => a.ToObject()).ToArray();
+                    eventSystem.TriggerEvent(name, eventArgs);
+                    return JsValue.Undefined;
+                });
             });
-        }
 
-        export function writeFileSync(filePath, data, encodingOrOptions) {
-            let encoding = 'utf-8';
-            if (typeof encodingOrOptions === 'object') {
-                encoding = encodingOrOptions.encoding || 'utf-8';
-            } else if (typeof encodingOrOptions === 'string') {
-                encoding = encodingOrOptions;
-            }
-            return host.writeFileSync(filePath, data, encoding);
-        }
-
-        export function writeFile(filePath, data, encodingOrCallback, callback) {
-            let encoding = 'utf-8';
-            let cb = callback;
-
-            if (typeof encodingOrCallback === 'function') {
-                cb = encodingOrCallback;
-            } else if (typeof encodingOrCallback === 'string') {
-                encoding = encodingOrCallback;
-            }
-
-            host.writeFile(filePath, data, encoding, (err) => {
-                if (err) {
-                    cb(new Error(err));
-                } else {
-                    cb(null);
-                }
+            engine.Modules.Add("ui", builder => {
+                builder.ExportObject("Notification", new
+                {
+                    show = new Action<string, float, float>(showNotification)
+                });
             });
-        }
 
-        export function existsSync(filePath) {
-            return host.existsSync(filePath);
-        }
-
-        export function mkdirSync(dirPath) {
-            return host.mkdirSync(dirPath);
-        }
-
-        export function readdirSync(dirPath) {
-            return host.readdirSync(dirPath);
-        }
-
-        export function unlinkSync(filePath) {
-            return host.unlinkSync(filePath);
-        }
-
-        export function rmdirSync(dirPath) {
-            return host.rmdirSync(dirPath);
-        }
-    ";
-            engine.Modules.Add("fs", fsModuleCode);
-        }
-
-        /// <summary>
-        /// Path
-        /// </summary>
-        private static void RegisterPathModule(Engine engine)
-        {
-            string pathModuleCode = @"
-        export function join(...paths) {
-            return host.pathJoin(paths);
-        }
-
-        export function resolve(...paths) {
-            return host.pathResolve(paths);
-        }
-
-        export function basename(path) {
-            return host.pathBasename(path);
-        }
-
-        export function dirname(path) {
-            return host.pathDirname(path);
-        }
-
-        export function extname(path) {
-            return host.pathExtname(path);
-        }
-
-        export function isAbsolute(path) {
-            return host.pathIsAbsolute(path);
-        }
-    ";
-            engine.Modules.Add("path", pathModuleCode);
-        }
-
-        /// <summary>
-        /// Process
-        /// </summary>
-        private static void RegisterProcessModule(Engine engine)
-        {
-            string processModuleCode = @"
-            export {
-                    cwd: () => host.processCwd(),
-                    env: host.processEnv,
-                    platform: host.processPlatform,
-                    version: host.processVersion,
-                    arch: host.processArch,
-                    pid: host.processPid,
-                    uptime: host.processUptime
-                };
-    ";
-            engine.Modules.Add("process", processModuleCode);
-        }
-
-        /// <summary>
-        /// Event Handlers
-        /// </summary>
-        private static void RegisterEventModule(Engine engine, EventSystem eventSystem)
-        {
-            string eventHandlerModuleCode = @"
-        const events = {}";
-
-            engine.Modules.Add("eventHandler", eventHandlerModuleCode);
-
-            engine.SetValue("registerEvent", new Func<string, Delegate, string>((eventName, callback) =>
-            {
-                var guid = eventSystem.RegisterEvent(eventName, callback);
-                return guid;
-            }));
-
-            engine.SetValue("unregisterEvent", new Action<string>(guid =>
-            {
-                eventSystem.UnregisterEvent(guid);
-            }));
-
-            engine.SetValue("triggerEvent", new Action<string, object[]>((eventName, args) =>
-            {
-                eventSystem.TriggerEvent(eventName, args);
-            }));
+            // React Modules
+            engine.Modules.Add("react", Properties.Resources.react);
+            engine.Modules.Add("react-unity", Properties.Resources.react_unity);
+            engine.Modules.Add("@react-components/unity",Properties.Resources.reactComponents);
         }
 
         /// <summary>
@@ -212,20 +130,6 @@ namespace Relief
         private static void showNotification(string message, float duration = 1, float size = 32)
         {
             NotificationManager.Instance.ShowNotification(message, duration, size);
-        }
-        private static void RegisterUiModule(Engine engine)
-        {
-            string uiModuleCode = @"
-                export const Notification = {
-                    show: (message, dur, size) => {
-                        __showNotification(message, dur, size);
-                    }
-                };
-            ";
-            engine.Modules.Add("ui", uiModuleCode);
-
-
-            engine.SetValue("__showNotification", new Action<string,float,float>(showNotification));
         }
     }
 }

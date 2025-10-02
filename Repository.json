@@ -2,8 +2,8 @@
   "Releases": [
     {
       "Id": "ScriptExecuter",
-      "Version": "0.39",
-      "DownloadUrl": "https://github.com/xbodwf/ScriptExecuter"
+      "Version": "0.41",
+      "DownloadUrl": "https://github.com/xbodwf/Relief"
     }
   ]
 }

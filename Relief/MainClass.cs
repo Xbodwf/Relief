@@ -45,6 +45,9 @@ namespace Relief
 
         static Thread Mainthread;
 
+        public static EventSystem eventSystem { get; private set; }
+
+        public static JsConsole jsConsole { get; private set; }
         public static string AssemblyDirectory
         {
             get
@@ -70,9 +73,6 @@ namespace Relief
         public static UnityModManager.ModEntry.ModLogger Logger { get; private set; }
 
         private static Harmony harmony;
-
-        private static ReactUnityHost _reactUnityHost;
-        private static ReactDOM _reactDOM; // Added ReactDOM instance
 
         /// <summary>
         /// Perform any initial setup with the mod here.
@@ -136,19 +136,19 @@ namespace Relief
                     options.AllowClr();
                 });
 
-                var jsConsole = new JsConsole(Logger);
+                jsConsole = new JsConsole(Logger);
 
                 transformEngine.SetValue("console", jsConsole);
 
                 transformEngine.Execute(Properties.Resources.tsc);
 
-                typeScriptLoader = new TypeScriptModuleLoader(transformEngine, ScriptDir, Logger,new Jint.Runtime.Modules.DefaultModuleLoader(ScriptDir));
+                typeScriptLoader = new TypeScriptModuleLoader(transformEngine, ScriptDir, Logger,new DefaultModuleLoader(ScriptDir));
 
                 engine = new Engine(options =>
                 {
                     options.EnableModules(ScriptDir);
                     options.ExperimentalFeatures = ExperimentalFeature.All;
-                    options.AllowClr();
+                    options.AllowClr(typeof(GameObject).Assembly,typeof(String).Assembly,typeof(TMPro.CaretInfo).Assembly);
                     options.Modules.ModuleLoader = typeScriptLoader;
                 });
                 engine.SetValue("window", engine);
@@ -161,61 +161,12 @@ namespace Relief
 
                
 
-                var eventSystem = new EventSystem();
-                var unityBridge = new UnityBridge(engine);
-                var reactUnity = new ReactUnity(engine, unityBridge);
+                 eventSystem = new EventSystem(engine);
 
-                _reactDOM = new ReactDOM(engine, reactUnity);
+                
 
-                // Create a GameObject for ReactUnityHost and add the component
-                var hostGameObject = new GameObject("ReactUnityHost");
-                _reactUnityHost = hostGameObject.AddComponent<ReactUnityHost>();
-                // Initialize ReactUnityHost with a dummy element for now, will be updated by actual render calls
-                _reactUnityHost.Initialize(reactUnity.CreateRoot(hostGameObject), JsValue.Undefined);
 
-                engine.Modules.Add("react", Properties.Resources.react);
-
-                var reactDOMModuleCode = @"
-                import React from 'react';
-
-                export function createRoot(container) {
-                    return ReactDOM.CreateRoot(container);
-                }
-
-                export function render(element, container, callback) {
-                    return ReactDOM.Render(element, container, callback);
-                }
-
-                export function unmountComponentAtNode(container) {
-                    return ReactDOM.UnmountComponentAtNode(container);
-                }
-
-                export function findDOMNode(component) {
-                    return ReactDOM.FindDOMNode(component);
-                }
-
-                export function createPortal(children, container) {
-                    return ReactDOM.CreatePortal(children, container);
-                }
-
-                export function flushSync(callback) {
-                    return ReactDOM.FlushSync(callback);
-                }
-
-                const ReactDOMClient = {
-                    createRoot,
-                    render,
-                    unmountComponentAtNode,
-                    findDOMNode,
-                    createPortal,
-                    flushSync
-                };
-
-                export default ReactDOMClient;
-                ";
-                engine.Modules.Add("react-dom", reactDOMModuleCode);
-
-                // 注册所有内置模块
+                // Register All Internal Modules
                 BuiltInModules.RegisterAllModules(engine, eventSystem, ScriptDir);
 
                 engine.SetValue<JsConsole>("console", jsConsole);
@@ -243,18 +194,6 @@ namespace Relief
             // Unpatch everything
             harmony.UnpatchAll(modEntry.Info.Id);
             engine = null;
-
-            if (_reactDOM != null)
-            {
-                _reactDOM.Cleanup();
-                _reactDOM = null;
-            }
-
-            if (_reactUnityHost != null)
-            {
-                UnityEngine.Object.Destroy(_reactUnityHost.gameObject);
-                _reactUnityHost = null;
-            }
         }
 
         private static void ScanMods(Engine engine)
@@ -312,6 +251,8 @@ namespace Relief
 
 
             }
+
+            eventSystem.TriggerEvent("modsLoaded");
         }
 
         public class ProjectInfo

@@ -119,7 +119,13 @@
   </resheader>
   <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
   <data name="react" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\react.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;gb2312</value>
+    <value>..\Resources\react.js;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;gb2312</value>
+  </data>
+  <data name="reactComponents" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\reactComponents.js;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="react_unity" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\react-unity.js;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
   </data>
   <data name="tsc" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\tsc.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;gb2312</value>
