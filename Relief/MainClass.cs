@@ -8,7 +8,7 @@ using System.IO;
 using Jint;
 using Jint.Native;
 using System.Xml.Linq;
-using System.Text.Json;
+using TinyJson;
 using Jint.Native.Object;
 using Jint.Native.Function;
 using Jint.Runtime;
@@ -148,20 +148,18 @@ namespace Relief
                 {
                     options.EnableModules(ScriptDir);
                     options.ExperimentalFeatures = ExperimentalFeature.All;
-                    options.AllowClr(typeof(GameObject).Assembly,typeof(String).Assembly,typeof(TMPro.CaretInfo).Assembly);
+                    options.AllowClr(typeof(GameObject).Assembly,typeof(String).Assembly,typeof(TMPro.CaretInfo).Assembly,typeof(BuiltInModules).Assembly);
                     options.Modules.ModuleLoader = typeScriptLoader;
                 });
                 engine.SetValue("window", engine);
                 engine.SetValue("document", engine);
                 engine.SetValue("self", engine);
+                engine.Execute(Properties.Resources.fetch);
+                engine.Execute(Properties.Resources.base64);
+                engine.Execute(Properties.Resources.abortcontroller);
 
-                engine.SetValue("GameObject", typeof(GameObject));
-                engine.SetValue("Transform", typeof(Transform));
-                engine.SetValue("Debug", typeof(Debug));
 
-               
-
-                 eventSystem = new EventSystem(engine);
+                eventSystem = new EventSystem(engine);
 
                 
 
@@ -200,14 +198,13 @@ namespace Relief
         {
             if (engine == null) { return; }
 
-
             foreach (var directory in Directory.GetDirectories(ScriptDir))
             {
                 string projectJsonPath = Path.Combine(directory, "project.json");
                 if (!File.Exists(projectJsonPath)) continue;
 
                 string projectJsonContent = File.ReadAllText(projectJsonPath);
-                var projectInfo = JsonSerializer.Deserialize<ProjectInfo>(projectJsonContent,JsonSerializerOptions.Default);
+                var projectInfo = projectJsonContent.FromJson<ProjectInfo>(); // 修改为TinyJson
 
                 if (string.IsNullOrEmpty(projectInfo.EntryPoint))
                     continue;

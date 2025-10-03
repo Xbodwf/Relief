@@ -61,6 +61,67 @@ namespace Relief.Properties {
         }
         
         /// <summary>
+        ///   查找类似 // https://cdn.jsdelivr.net/npm/abortcontroller-polyfill@1.7.5/dist/abortcontroller-polyfill-only.js
+        ///(function (factory) {
+        ///    typeof define === &apos;function&apos; &amp;&amp; define.amd ? define(factory) :
+        ///        factory();
+        ///})((function () {
+        ///    &apos;use strict&apos;;
+        ///
+        ///    function _classCallCheck(instance, Constructor) {
+        ///        if (!(instance instanceof Constructor)) {
+        ///            throw new TypeError(&quot;Cannot call a class as a function&quot;);
+        ///        }
+        ///    }
+        ///
+        ///    function _defineProperties(target, props) {
+        ///        for ( [字符串的其余部分被截断]&quot;; 的本地化字符串。
+        /// </summary>
+        internal static string abortcontroller {
+            get {
+                return ResourceManager.GetString("abortcontroller", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 (function (root, factory) {
+        ///  if (typeof define === &apos;function&apos; &amp;&amp; define.amd) {
+        ///      // AMD. Register as an anonymous module.
+        ///      define([], function() {factory(root);});
+        ///  } else factory(root);
+        ///// node.js has always supported base64 conversions, while browsers that support
+        ///// web workers support base64 too, but you may never know.
+        ///})(typeof exports !== &quot;undefined&quot; ? exports : this, function(root) {
+        ///  if (root.atob) {
+        ///      // Some browsers&apos; implementation of atob doesn&apos;t support whitespaces
+        ///   [字符串的其余部分被截断]&quot;; 的本地化字符串。
+        /// </summary>
+        internal static string base64 {
+            get {
+                return ResourceManager.GetString("base64", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 // https://cdn.jsdelivr.net/npm/whatwg-fetch@3.6.20/dist/fetch.umd.js
+        ///(function (global, factory) {
+        ///  typeof exports === &apos;object&apos; &amp;&amp; typeof module !== &apos;undefined&apos; ? factory(exports) :
+        ///  typeof define === &apos;function&apos; &amp;&amp; define.amd ? define([&apos;exports&apos;], factory) :
+        ///  (factory((global.WHATWGFetch = {})));
+        ///}(this, (function (exports) { &apos;use strict&apos;;
+        ///
+        ///  /* eslint-disable no-prototype-builtins */
+        ///  var g =
+        ///    (typeof globalThis !== &apos;undefined&apos; &amp;&amp; globalThis) ||
+        ///    (typeof self !== &apos;undefined&apos; &amp;&amp; self) | [字符串的其余部分被截断]&quot;; 的本地化字符串。
+        /// </summary>
+        internal static string fetch {
+            get {
+                return ResourceManager.GetString("fetch", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 /* esm.sh - react@19.1.1 */
         ///var x=Object.create;var C=Object.defineProperty;var D=Object.getOwnPropertyDescriptor;var b=Object.getOwnPropertyNames;var k=Object.getPrototypeOf,q=Object.prototype.hasOwnProperty;var S=(e,t)=&gt;()=&gt;(t||e((t={exports:{}}).exports,t),t.exports);var z=(e,t,n,r)=&gt;{if(t&amp;&amp;typeof t==&quot;object&quot;||typeof t==&quot;function&quot;)for(let u of b(t))!q.call(e,u)&amp;&amp;u!==n&amp;&amp;C(e,u,{get:()=&gt;t[u],enumerable:!(r=D(t,u))||r.enumerable});return e};var G=(e,t,n)=&gt;(n=e!=null?x(k(e)):{},z(t||!e||!e.__esModule?C(n,&quot;def [字符串的其余部分被截断]&quot;; 的本地化字符串。
         /// </summary>

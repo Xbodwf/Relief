@@ -9,6 +9,7 @@ using Jint;
 
 namespace Relief
 {
+    [JavascriptType]
     public class HostMethods
     {
         private readonly string _scriptDir;
@@ -18,6 +19,7 @@ namespace Relief
             _scriptDir = scriptDir;
         }
 
+        
         public string readFileSync(string filePath, string encoding = "utf8")
         {
             try
