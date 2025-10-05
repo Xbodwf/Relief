@@ -1,0 +1,11 @@
+{
+  "Id": "Relief",
+  "DisplayName": "Relief",
+  "Author": "Xbodwf",
+  "Version": "",
+  "ManagerVersion": "0.22.14.0",
+  "AssemblyName": "Relief.dll",
+  "EntryMethod": "Relief.Startup.Load",
+  "HomePage": "https://github.com/flutas-web/ScriptExecuter",
+  "Repository": "https://github.com/flutas-web/ScriptExecuter"
+}

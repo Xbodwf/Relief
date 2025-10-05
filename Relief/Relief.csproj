@@ -16,6 +16,11 @@
     <IsPublishable>False</IsPublishable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="ShowBPM\**" />
+    <EmbeddedResource Remove="ShowBPM\**" />
+    <None Remove="ShowBPM\**" />
+  </ItemGroup>
+  <ItemGroup>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="UnityEngine.TextCoreModule">
       <HintPath>D:\Program Files (x86)\Steam\steamapps\common\A Dance of Fire and Ice\A Dance of Fire and Ice_Data\Managed\UnityEngine.TextCoreModule.dll</HintPath>
@@ -48,6 +53,7 @@
     <Reference Include="RDTools, Version=1.0.8630.31434, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>D:\Program Files (x86)\Steam\steamapps\common\A Dance of Fire and Ice\A Dance of Fire and Ice_Data\Managed\RDTools.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Unity.TextMeshPro">

@@ -21,6 +21,8 @@ using UnityEngine.EventSystems;
 using Jint.Runtime.Interop;
 using System.Threading;
 using Relief.Modules.vm;
+using TMPro;
+using Relief.Modules.BuiltInModules;
 
 // TODO: Rename this namespace to your mod's name.
 namespace Relief
@@ -142,13 +144,13 @@ namespace Relief
 
                 transformEngine.Execute(Properties.Resources.tsc);
 
-                typeScriptLoader = new TypeScriptModuleLoader(transformEngine, ScriptDir, Logger,new DefaultModuleLoader(ScriptDir));
+                typeScriptLoader = new TypeScriptModuleLoader(transformEngine, ScriptDir, Logger, new DefaultModuleLoader(ScriptDir));
 
                 engine = new Engine(options =>
                 {
                     options.EnableModules(ScriptDir);
                     options.ExperimentalFeatures = ExperimentalFeature.All;
-                    options.AllowClr(typeof(GameObject).Assembly,typeof(String).Assembly,typeof(TMPro.CaretInfo).Assembly,typeof(BuiltInModules).Assembly);
+                    options.AllowClr(typeof(String).Assembly, typeof(BuiltInModules).Assembly);
                     options.Modules.ModuleLoader = typeScriptLoader;
                 });
                 engine.SetValue("window", engine);
@@ -161,22 +163,65 @@ namespace Relief
 
                 eventSystem = new EventSystem(engine);
 
-                
+
 
 
                 // Register All Internal Modules
                 BuiltInModules.RegisterAllModules(engine, eventSystem, ScriptDir);
 
-                engine.SetValue<JsConsole>("console", jsConsole);
+                // Create a GameObject for ReliefUnityEvents
+                var unityEventsGameObject = new UnityEngine.GameObject("ReliefUnityEvents");
+                var reliefUnityEvents = unityEventsGameObject.AddComponent<ReliefUnityEvents>();
+                reliefUnityEvents.EventSystem = eventSystem;
 
-                Mainthread = new Thread(new ThreadStart(ScanModE));
-                Mainthread.Start();
+                // Dynamically register UnityEngine types as a module
+                var unityEngineAssembly = typeof(UnityEngine.GameObject).Assembly;
+                engine.Modules.Add("unity-engine", builder =>
+                {
+                    foreach (var type in unityEngineAssembly.GetExportedTypes().Where(t => t.IsPublic && t.Namespace == "UnityEngine"))
+                    {
+                        builder.ExportType(type.Name, type);
+                    }
+
+                    // Explicitly export a factory function for GameObject
+                    builder.ExportFunction("createGameObject", new Func<JsValue[], JsValue>((name) => JsValue.FromObject(engine, new UnityEngine.GameObject(name[0].AsString()))));
+                });
+
+                // Dynamically register TMPro types as a module
+                var tmproAssembly = typeof(TMPro.TextMeshProUGUI).Assembly;
+                engine.Modules.Add("tmpro", builder =>
+                {
+                    foreach (var type in tmproAssembly.GetExportedTypes().Where(t => t.IsPublic && t.Namespace == "TMPro"))
+                    {
+                        builder.ExportType(type.Name, type);
+                    }
+                });
+
+                // Dynamically register mod's types as a module
+                if (modEntry.Assembly != null)
+                {
+                    engine.Modules.Add("mod-assembly", builder =>
+                    {
+                        foreach (var type in modEntry.Assembly.GetExportedTypes().Where(t => t.IsPublic))
+                        {
+                            builder.ExportType(type.FullName, type);
+                        }
+                    });
+                }
+
+                engine.SetValue<JsConsole>("console", jsConsole);
+                engine.SetValue("eventSystem", eventSystem);
             }
             catch (Exception ex)
             {
                 Logger.LogException(ex);
             }
+
+            Mainthread = new Thread(new ThreadStart(ScanModE));
+            Mainthread.Start();
         }
+
+
 
         private static void ScanModE()
         {

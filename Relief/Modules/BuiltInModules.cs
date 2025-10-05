@@ -2,7 +2,8 @@ using System;
 using System.Linq;
 using Jint;
 using Jint.Native;
-using Relief.UI;
+using Relief.Modules;
+using UnityEngine;
 
 namespace Relief
 {
@@ -40,10 +41,23 @@ namespace Relief
                 });
             });
 
-            engine.Modules.Add("ui", builder => {
-                builder.ExportObject("Notification", new
+
+            // Register UIText module
+            engine.Modules.Add("uitext", builder =>
+            {
+                GameObject uiTextGameObject = new GameObject("UITextModule");
+                UnityEngine.Object.DontDestroyOnLoad(uiTextGameObject);
+                UIText uiTextInstance = uiTextGameObject.AddComponent<UIText>();
+
+                builder.ExportObject("instance", new
                 {
-                    show = new Action<string, float, float>(showNotification)
+                    setText = new Action<string>(uiTextInstance.setText),
+                    setPosition = new Action<float, float>(uiTextInstance.setPosition),
+                    setSize = new Action<int>(uiTextInstance.setSize),
+                    // setFont = new Action<Font>(uiTextInstance.setFont), // Font cannot be directly passed from JS
+                    setAlignment = new Action<int>(align => uiTextInstance.setAlignment(uiTextInstance.toAlign(align))),
+                    setFontStyle = new Action<int>(style => uiTextInstance.setFontStyle((FontStyle)style)),
+                    setShadowEnabled = new Action<bool>(uiTextInstance.setShadowEnabled)
                 });
             });
 
@@ -53,9 +67,5 @@ namespace Relief
             engine.Modules.Add("@react-components/unity", Properties.Resources.reactComponents);
         }
 
-        private static void showNotification(string message, float duration = 1, float size = 32)
-        {
-            NotificationManager.Instance.ShowNotification(message, duration, size);
-        }
     }
 }
